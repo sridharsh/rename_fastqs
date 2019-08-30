@@ -53,78 +53,63 @@ def remove_fastqdirs(numb_path):
 
     return
 
-
 def rename_fastqs(path, samplesheet):
+    converter = {}
+    header_idx = {}
+    s_sheet = open(samplesheet, "r")
 
-    present_names = os.listdir(path)
-    sample_sheet = open(samplesheet, "r")
-    sample_sheet = sample_sheet.readlines()[14:]
+    sample_sheet = s_sheet.readlines()[14:]
     header = sample_sheet[0].split(",")
-    parsed_info = {}
-    new_names = {}
+    for idx, col_name in enumerate(header):
+        if col_name == "Lane":
+            header_idx["lane"] = idx
+            lane_i = idx
+            # print(idx, col_name)
+        if col_name == "Sample_Name":
+            header_idx["sample_name"] = idx
+            sample_name_i = idx
+            # print(idx, col_name)
+        if col_name == "I7_Index_ID":
+            header_idx["i7"] = idx + 1
+            # i7_i = idx+1
+            # print(idx, col_name)
+        if col_name == "I5_Index_ID":
+            header_idx["i5"] = idx + 1
+            # i5_i = idx+1
+            # print(idx, col_name)
 
-    for line in sample_sheet[1:]:
+    # pprint(header_idx)
 
+    sample_sheet = sample_sheet[1:]
+
+    for i, line in enumerate(sample_sheet):
         line = line.split(",")
 
-        for idx, col_names in enumerate(header):
+        # make directories of sample names line[sample_name_i]
+        try:
+            os.mkdir(line[header_idx["sample_name"]])
+        except:
+            pass
 
-            sample_idx = 0
-
-            if col_names == "Lane":
-
-                lane = line[idx]
-
-                while len(idx) > 3:
-                    lane = "0"+line[idx]
-
-                if col_names == "Sample_ID":
-                    sample_idx = idx
-                    parsed_info["S"+line[sample_idx]+"_L"+lane] = ""
-
-                elif col_names == 'I7_Index_ID':
-                    parsed_info["S"+line[sample_idx]+"_L"+lane] += line[idx+1]
-
-                elif col_names == 'I5_Index_ID':
-
-                    if line[sample_idx] != "":
-                        parsed_info["S"+line[sample_idx]+"_L"+lane] += "_"+line[idx+1]
-                    else:
-                        pass
-
-                else:
-                    pass
-
+        if "lane" in header_idx:
+            lane = line[header_idx["lane"]]
+            while len(line[lane]) < 3:
+                lane = "0" + str(lane)
+            old_name = "_".join(["S" + str(i + 1), "L" + lane])
+            if line[header_idx["i5"]] != "":
+                new_name = "_".join([line[header_idx["i7"]], line[header_idx["i5"]]])
             else:
+                new_name = "_".join([line[header_idx["i7"]]])
+            converter[old_name] = new_name
 
-                if col_names == "Sample_ID":
-                    sample_idx = idx
-                    parsed_info["S"+line[sample_idx]] = ""
-
-                elif col_names == 'I7_Index_ID':
-                    parsed_info["S"+line[sample_idx]] += line[idx+1]
-
-                elif col_names == 'I5_Index_ID':
-
-                    if line[sample_idx] != "":
-                        parsed_info["S"+line[sample_idx]] += "_"+line[idx+1]
-                    else:
-                        pass
-
-                else:
-                    pass
-
-    for k, v in parsed_info.items():
-
-        for names in present_names:
-
-            if k in names:
-                new_names[names] = v.join(names.split(k))
-
+        else:
+            old_name = "_".join(["S" + str(i + 1)])
+            if line[header_idx["i5"]] != "":
+                new_name = "_".join([line[header_idx["i7"]], line[header_idx["i5"]]])
             else:
-                pass
-
-    return new_names
+                new_name = "_".join([line[header_idx["i7"]]])
+            converter[old_name] = new_name
+    return converter
 
 
 def rename_move(fastq_path, dict_newname):
@@ -143,17 +128,14 @@ def rename_move(fastq_path, dict_newname):
     for files in file_name:
         if files.endswith(".fastq.gz"):
             found = files.split("_S")[0]
-
+            s_term = "S" + files.split("_S")[1].split("_R")[0]
+            
             # Makes new directories with sample name as their names.
             # moves the fastq files into their respective sample names.
-
-            try:
-                os.mkdir(found)
-                os.rename(fastq_path + "/" + files, fastq_path + "/" + found + "/" + dict_newname[files])
-                print("\nmoved:", fastq_path + "/" + files, "\nto:", fastq_path + "/" + found + "/" + dict_newname[files])
-            except:
-                os.rename(fastq_path + "/" + files, fastq_path + "/" + found + "/" + dict_newname[files])
-                print("\nmoved:", fastq_path + "/" + files, "\nto:", fastq_path + "/" + found + "/" + dict_newname[files])
+            os.rename(fastq_path + "/" + files, fastq_path + "/" +
+                      found +"/" + files.replace(s_term, dict_newname[s_term]))
+            print("\nmoved:", fastq_path + "/" + files, "\nto:",fastq_path + "/" +
+                  found + "/" + files.replace(s_term, dict_newname[s_term]))
 
     return print("Done!")
 
